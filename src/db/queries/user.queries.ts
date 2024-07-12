@@ -1,8 +1,8 @@
-import {type UserReq, type LoginReq} from "../../types/type"
+import {type UserReq, type LoginReq, type UserCourseReq} from "../../types/type"
 import db from "../db"
 import { TokenService } from '../../services/token.service'
 import { eq } from "drizzle-orm";
-import { users } from "../schema";
+import { users, userCourses } from "../schema";
 import bcrypt from "bcryptjs"
 import { ErrorMiddleware } from "../../middlewares/error.middleware"
 
@@ -31,7 +31,7 @@ export const createUser = async(body:UserReq) => {
   
 
     if(checkUser.length > 0){
-        const error = new ErrorMiddleware( "Bad Request",'Registration unsuccessful-Email already in Use', 422);
+        const error = new ErrorMiddleware( "Bad Request",'Email already in Use', 422);
         return error
     }
 
@@ -60,7 +60,7 @@ export const login = async (req: LoginReq) => {
     const result = await bcrypt.compare(req.password, user[0].password as string);
 
     if (!result) {
-      const error = new ErrorMiddleware('Bad Request', 'Authentication failed', 401);
+      const error = new ErrorMiddleware('Bad Request', 'Invalid username or password', 401);
       return error;
     }
 
@@ -85,3 +85,110 @@ export const login = async (req: LoginReq) => {
     return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
   }
 };
+
+export const getUserById = async(userId:string) =>{
+    try{
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).execute()
+                                                    
+        if(!user){
+            const error = new ErrorMiddleware( "Bad Request",'No such user exists please sign up', 401);
+            return error
+        }
+
+        return user
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}
+
+export const getUserCourses = async(id:string) => {
+    try{
+        const userCourses = await db.select().from(users).where(eq(users.id, id)).execute()
+
+        if(userCourses.length <= 0){
+            const error = new ErrorMiddleware( "Bad Request",'No such user exists please sign up', 401);
+            return error
+        }
+        
+        return userCourses
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}
+
+export const updateUserDetails = async(req:UserReq, id:string) => {
+    try{
+         const user = await db.select().from(users).where(eq(users.id, id)).execute()
+
+        if(user.length <= 0){
+            const error = new ErrorMiddleware( "Bad Request",'No such user exists please sign up', 401);
+            return error
+        }
+
+
+        const updatedUser = await db.update(users).set(req).where(eq(users.id, id)).returning()
+
+        return updatedUser
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}
+
+export const deleteUser = async(id:string) =>{
+    try{
+
+        const user = await db.select().from(users).where(eq(users.id, id)).execute()
+
+        if(user.length <= 0){
+            const error = new ErrorMiddleware( "Bad Request",'No such user exists please sign up', 401);
+            return error
+        }
+
+        const deletedUser = await db.delete(users).where(eq(users.id, id)).returning()
+
+        return deletedUser
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}
+
+export const getAllUsers = async() => {
+    try{
+        const allUser = await db.select().from(users).execute()
+
+        return allUser
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}
+
+export const enrollCourse = async(req:UserCourseReq) => {
+    try{
+        const user = await db.select().from(users).where(eq(users.id, req.userId)).execute()
+
+        if(user.length <= 0){
+            const error = new ErrorMiddleware( "Bad Request",'No such user exists please sign up', 401);
+            return error
+        }
+
+        const course = await db.select().from(users).where(eq(users.id, req.courseId)).execute()
+
+        if(course.length <= 0){
+            const error = new ErrorMiddleware( "Bad Request",'No such course exists', 401);
+            return error
+        }
+
+        const userCourse = await db.insert(userCourses).values(req).returning() 
+
+        return userCourse
+        
+    }catch(err){
+        console.error('Unexpected error:', err);
+        return new ErrorMiddleware('Internal Server Error', 'An unexpected error occurred', 500);
+    }
+}

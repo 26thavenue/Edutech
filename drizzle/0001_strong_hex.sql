@@ -1,0 +1,1 @@
+ALTER TABLE "user_chapters_lessons" DROP COLUMN IF EXISTS "progress";

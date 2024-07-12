@@ -88,7 +88,6 @@ export const userChaptersLessons = pgTable('user_chapters_lessons', {
   chapterId: uuid('chapter_id').notNull(),
   lessonId: uuid('lesson_id').notNull().references(() => lessons.id),
   completed: boolean('completed').notNull().default(false),
-  progress: text('progress').notNull().default('0%'),
 },
 (t) => ({
   pk: primaryKey({columns: [t.userId, t.courseId, t.chapterId, t.lessonId]}),
